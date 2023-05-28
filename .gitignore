@@ -1,0 +1,6 @@
+__pycache__
+venv
+database.sqlite
+.env
+config.yaml
+*.log
