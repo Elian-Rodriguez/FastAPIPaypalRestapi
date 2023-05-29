@@ -1,5 +1,6 @@
 import yaml
-
+from loguru import logger
+import sys 
 def get_config():
     with open('config.yaml', 'r') as file:
         config = yaml.safe_load(file)
@@ -22,3 +23,15 @@ version = appConfig.get('version')
 port = appConfig.get('port')
 baseRoute = appConfig.get('base_route')
 appName = appConfig.get('name')
+
+
+
+# Configurar el modo del log
+logger.remove()  # Eliminar cualquier configuración anterior
+logger.add(sys.stdout, level=logMode, format=" {time} - {level} - {message} - {module} - {function}")  # Agregar un manipulador para stdout en nivel logMode
+logger.add(
+    sink="logs/development.log",
+    level=logMode,
+    rotation=rotation,
+    format=" {time} - {level} - {message} - {module} - {function}"
+)

@@ -1,37 +1,32 @@
 from fastapi import FastAPI
+from fastapi import Request
 from loguru import logger
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from middlewares.error_handler import ErrorHandler
 import uvicorn
-import sys
-from config import appConfig, baseRoute, logMode, rotation
+from config import appConfig, baseRoute, logMode, rotation, logger
+from routers.payment import routerPayment
 
-# Configurar el modo del log
-logger.remove()  # Eliminar cualquier configuración anterior
-logger.add(sys.stdout, level=logMode, format=" {time} - {level} - {message} - {module} - {function}")  # Agregar un manipulador para stdout en nivel logMode
-logger.add(
-    sink="logs/development.log",
-    level=logMode,
-    rotation=rotation,
-    format=" {time} - {level} - {message} - {module} - {function}"
-)
 
+BASE_ROUTE = appConfig['base_route']
 logger.info("STARTING SERVER OPERATION")
 
 # Crear la instancia de la aplicación FastAPI
-app = FastAPI(base_route=baseRoute)
+app = FastAPI()
 # Agregar el middleware ErrorHandler
-app.add_middleware(ErrorHandler)
-
-logger.info("FINISHING SERVER START-UP")
-
+#app.add_middleware(ErrorHandler)
+app.include_router(routerPayment)
 
 
-@app.get('/', tags=['ping'])
-def message():
-    logger.info("Processing request...")
+
+
+@app.get(BASE_ROUTE+'/', tags=['ping'])
+def message(request: Request):
+    correlation_id = request.headers.get("X-Correlation-ID")
+    logger.info(f"{correlation_id} -  Processing request... ")
     response = {"body": "It is alive"}
+    logger.info(f"{correlation_id} -  Response {response}")
     return JSONResponse(status_code=200, content=response)
 
 
