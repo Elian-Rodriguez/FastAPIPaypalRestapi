@@ -1,11 +1,11 @@
 from fastapi import FastAPI
 from fastapi import Request
-from loguru import logger
+#from loguru import logger
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from middlewares.error_handler import ErrorHandler
 import uvicorn
-from config import appConfig, baseRoute, logMode, rotation, logger
+from config import appConfig, baseRoute, logMode, rotation , logger
 from routers.payment import routerPayment
 from database.database import engine, Base
 
@@ -24,7 +24,7 @@ logger.info(f"{app.title} - {app.version}")
 app.include_router(routerPayment)
 
 Base.metadata.create_all(bind=engine)
-
+logger.info("FINALIZED START")
 
 @app.get('/', tags=['ping'])
 def message(request: Request):

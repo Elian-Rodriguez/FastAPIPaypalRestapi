@@ -3,6 +3,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from config import mysql_config
+
+
+
 # Configuración de la conexión a MySQL
 host = mysql_config['host']
 port = mysql_config['port']

@@ -5,12 +5,14 @@ import requests
 import base64
 import json
 import uuid
-from config import appConfig, logger, paypal_config
+from config import appConfig, paypal_config, logger
 from database.database import Session
 from services.payment import OrderCreated as orderCreatedService
 from models.payment import OrderCreated as orderCreatedModel
 from schemas.payment import OrderCreated as orderCreated
 from datetime import datetime
+#from loguru import logger
+
 
 HOST = str(appConfig['host'])
 logger.debug(HOST)
@@ -45,8 +47,8 @@ async def get_access_token():
         return access_token
 
 
-@routerPayment.post("/create-order")
-async def create_order(response: Response, response_model=orderCreated, status_code=201):
+@routerPayment.post("/create-order" , tags=['Create Order'])
+async def create_order(response: Response ) -> dict:
     access_token = await get_access_token()
     request_id = str(uuid.uuid4())
     monto = 100.00
