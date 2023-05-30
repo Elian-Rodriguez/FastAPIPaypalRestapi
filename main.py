@@ -7,18 +7,23 @@ from middlewares.error_handler import ErrorHandler
 import uvicorn
 from config import appConfig, baseRoute, logMode, rotation, logger
 from routers.payment import routerPayment
-
+from database.database import engine, Base
 
 BASE_ROUTE = appConfig['base_route']
 logger.info("STARTING SERVER OPERATION")
 
 # Crear la instancia de la aplicación FastAPI
 app = FastAPI()
+
+app.title = appConfig['name']
+app.version = appConfig['verssion']
+logger.info(f"{app.title} - {app.version}")
+
 # Agregar el middleware ErrorHandler
 #app.add_middleware(ErrorHandler)
 app.include_router(routerPayment)
 
-
+Base.metadata.create_all(bind=engine)
 
 
 @app.get(BASE_ROUTE+'/', tags=['ping'])
