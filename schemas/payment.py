@@ -2,7 +2,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 from typing import Optional
 
-class orderCreated(BaseModel):
+class OrderCreated(BaseModel):
     id: str = Field(max_length=18)
     status: str = Field(max_length=22)
     link: str = Field(max_length=100)

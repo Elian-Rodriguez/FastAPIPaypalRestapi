@@ -1,10 +1,10 @@
 from datetime import datetime
 from sqlalchemy.orm import Session
-from models.payment import orderCreated as orderCreatedModel
-from schemas.payment import orderCreated
+from models.payment import OrderCreated as orderCreatedModel
+from schemas.payment import  OrderCreated  as orderCreated
 
 
-class orderCreated():
+class OrderCreated():
     
     def __init__(self, db: Session) -> None:
         self.db = db

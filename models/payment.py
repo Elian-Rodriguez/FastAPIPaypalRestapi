@@ -2,7 +2,7 @@ from datetime import datetime
 from sqlalchemy import Column, Integer, String, DateTime,Float
 from database.database import Base
 
-class orderCreated(Base):
+class OrderCreated(Base):
     __tablename__ = "ordersCreated"
 
     id = Column(String(18), primary_key=True)

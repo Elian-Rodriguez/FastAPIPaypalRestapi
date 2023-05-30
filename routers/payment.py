@@ -7,9 +7,9 @@ import json
 import uuid
 from config import appConfig, logger, paypal_config
 from database.database import Session
-from services.payment import orderCreated as orderCreatedService
-from models.payment import orderCreated as orderCreatedModel
-from schemas.payment import orderCreated
+from services.payment import OrderCreated as orderCreatedService
+from models.payment import OrderCreated as orderCreatedModel
+from schemas.payment import OrderCreated as orderCreated
 from datetime import datetime
 
 HOST = str(appConfig['host'])
