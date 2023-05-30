@@ -1,19 +1,18 @@
 from datetime import datetime
-from pydantic import BaseModel , Field
+from pydantic import BaseModel, Field
 from typing import Optional
 
 class orderCreated(BaseModel):
-    id: str
-    status: str
-    link: str
-    method: str
+    id: str = Field(max_length=18)
+    status: str = Field(max_length=22)
+    link: str = Field(max_length=100)
+    method: str = Field(max_length=22)
     statusCode: int = Field(ge=99, le=600)
-    amount: float
-    currency_code: str
+    amount: float = Field(ge=0, le=1200)
+    currency_code: str = Field(max_length=10)
     creationDate: Optional[datetime]
 
     class Config:
-        #orm_mode = True
         schema_extra = {
             "example": {
                 "id": "1Y064474HN8349825",
@@ -23,6 +22,6 @@ class orderCreated(BaseModel):
                 "amount": 100.0,
                 "statusCode": 200,
                 "currency_code": "USD",
-                "creationDate": "2023/05/30 6:42:15.491688"
-                }
+                "creationDate": "2023-05-30 06:42:15.491688"
+            }
         }

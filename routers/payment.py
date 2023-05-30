@@ -1,16 +1,16 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Response
 from fastapi import HTTPException
 from fastapi.responses import JSONResponse
-from fastapi import Response
 import requests
-from config import appConfig, logger, paypal_config
 import base64
 import json
 import uuid
+from config import appConfig, logger, paypal_config
 from database.database import Session
-from services.payment import orderCreatedService
-from models.payment import orderCreated as orderCreatedMoldel
-from schemas.payment import orderCreated 
+from services.payment import orderCreated as orderCreatedService
+from models.payment import orderCreated as orderCreatedModel
+from schemas.payment import orderCreated
+from datetime import datetime
 
 HOST = str(appConfig['host'])
 logger.debug(HOST)
@@ -23,31 +23,30 @@ routerPayment = APIRouter()
 
 
 async def get_access_token():
-    credentials = f"{PAYPAL_CLIENT_ID}:{PAYPAL_CLIENT_SECRET}" 
+    credentials = f"{PAYPAL_CLIENT_ID}:{PAYPAL_CLIENT_SECRET}"
     encoded_credentials = base64.b64encode(credentials.encode()).decode()
 
     headers = {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Authorization': f'Basic {encoded_credentials}'
     }
-    
+
     payload = 'grant_type=client_credentials'
 
-    urlAccesToken = PAYPAL_API_URL + "/v1/oauth2/token"
+    urlAccessToken = PAYPAL_API_URL + "/v1/oauth2/token"
 
-    response = requests.post(urlAccesToken, headers=headers, data=payload)
+    response = requests.post(urlAccessToken, headers=headers, data=payload)
 
     logger.warning(f"RESPONSE {response.status_code}")
-    if response.status_code >= 200 and response.status_code <= 299:
+    if 200 <= response.status_code <= 299:
         data = response.json()
         access_token = data.get('access_token')
-        logger.warning("ACCES TOKEN GENERADO ")
+        logger.warning("ACCESS TOKEN GENERATED")
         return access_token
 
 
-
 @routerPayment.post("/create-order")
-async def create_order(response: Response, response_model=dict, status_code=201):
+async def create_order(response: Response, response_model=orderCreated, status_code=201):
     access_token = await get_access_token()
     request_id = str(uuid.uuid4())
     monto = 100.00
@@ -82,7 +81,7 @@ async def create_order(response: Response, response_model=dict, status_code=201)
     logger.info(response.status_code)
     data = response.json()
     logger.debug(f"{data} - {type(data)}")
-    if response.status_code >= 200 and response.status_code <= 299:
+    if 200 <= response.status_code <= 299:
         db = Session()
         rpta = {
             "id": data['id'],
@@ -93,23 +92,6 @@ async def create_order(response: Response, response_model=dict, status_code=201)
             "statusCode": response.status_code,
             "currency_code": currency_code
         }
-        order_created = orderCreated(**rpta)
+        order_created = orderCreatedModel(**rpta)
         orderCreatedService(db).create_order(order_created)
         return JSONResponse(status_code=201, content=rpta)
-"""
-    currency_code = Column(String(10))
-    creationDate = Column(DateTime, default=datetime.utcnow)
-"""
-      
-        
-"""
-@routerPayment.get("/create-order") 
-async def create_order(response: Response):
-    pass
-
-
-@routerPayment.get("/cancel-payment") 
-async def create_order(response: Response):
-    pass
-    
-    """

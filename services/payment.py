@@ -4,7 +4,7 @@ from models.payment import orderCreated as orderCreatedModel
 from schemas.payment import orderCreated
 
 
-class orderCreatedService():
+class orderCreated():
     
     def __init__(self, db: Session) -> None:
         self.db = db

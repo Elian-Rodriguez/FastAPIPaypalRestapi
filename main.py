@@ -26,7 +26,7 @@ app.include_router(routerPayment)
 Base.metadata.create_all(bind=engine)
 
 
-@app.get(BASE_ROUTE+'/', tags=['ping'])
+@app.get('/', tags=['ping'])
 def message(request: Request):
     correlation_id = request.headers.get("X-Correlation-ID")
     logger.info(f"{correlation_id} -  Processing request... ")
