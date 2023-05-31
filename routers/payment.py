@@ -110,29 +110,28 @@ async def create_order(requestOrderCreated: RequestOrderCreated ) -> dict:
         return JSONResponse(status_code=201, content=rpta)
     
     
-@routerPayment.get('/capture-order' , tags=['Capture Order'], response_model=dict, status_code=201)
-async def capture_order(token: str) -> dict:
+@routerPayment.get('/capture-order', tags=['Capture Order'], response_model=dict, status_code=201)
+async def capture_order(token: str, PayerID: str) -> dict:
     logger.info("Start Request capture-order")
     request_id = str(uuid.uuid4())
     access_token = await get_access_token()
     headers = {
         'PayPal-Request-Id': request_id,
         'Authorization':  f'Bearer {access_token}',
-        }
+        'Content-Type': 'application/json',
+    }
+
     paypalUrlCapture = str(PAYPAL_API_URL) + "/v2/checkout/orders/" + str(token) + "/capture"
-    
+    logger.info(f"HEADERS - {headers} - {type(headers)}")
+    logger.info(f"URL : {paypalUrlCapture}")
 
     try:
-
-        response = requests.post(
-            paypalUrlCapture,
-            headers=headers
-        )
-        #response.raise_for_status()
+        response = requests.post(paypalUrlCapture,headers=headers)
         data = response.json()
         logger.info(response.status_code)
         logger.info(f"Response of Capture Order -- {data}")
-        return  JSONResponse(status_code=201, content=data)
+        return JSONResponse(status_code=201, content=data)
+    
     except requests.exceptions.RequestException as error:
         print(error)
         raise HTTPException(status_code=500, detail="Internal Server Error")
