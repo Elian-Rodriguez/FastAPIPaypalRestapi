@@ -26,7 +26,11 @@ class OrderCreated():
             statusCode=order.statusCode,
             amount=order.amount,
             currency_code=order.currency_code,
-            creationDate=datetime.utcnow()
+            creationDate=datetime.utcnow(),
+            user  = order.user,
+            email= order.email,
+            phone_number= order.phone_number,
+            description  = order.description, 
         )
         self.db.add(new_order)
         self.db.commit()
@@ -40,7 +44,11 @@ class OrderCreated():
         order.statusCode = data.statusCode
         order.amount = data.amount
         order.currency_code = data.currency_code
-        order.creationDate = datetime.utcnow()
+        order.creationDate = datetime.utcnow(),
+        order.user  = data.user,
+        order.email= data.email,
+        order.phone_number= data.phone_number,
+        order.description  = data.description, 
         self.db.commit()
         return
 

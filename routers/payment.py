@@ -10,6 +10,7 @@ from database.database import Session
 from services.payment import OrderCreated as orderCreatedService
 from models.payment import OrderCreated as orderCreatedModel
 from schemas.payment import OrderCreated as orderCreated
+from schemas.payment import RequestOrderCreated as RequestOrderCreated
 from datetime import datetime
 #from loguru import logger
 
@@ -47,12 +48,17 @@ async def get_access_token():
         return access_token
 
 
-@routerPayment.post("/create-order" , tags=['Create Order'])
-async def create_order(response: Response ) -> dict:
+
+
+@routerPayment.post("/create-order" , tags=['Create Order'], response_model=dict, status_code=201)
+async def create_order(requestOrderCreated: RequestOrderCreated ) -> dict:
+    logger.info(f"Start of the Request create-order")
+    requestOrderCreated = requestOrderCreated.dict()
+    logger.info(f"{requestOrderCreated}")
     access_token = await get_access_token()
     request_id = str(uuid.uuid4())
-    monto = 100.00
-    currency_code = "USD"
+    monto = requestOrderCreated['amount']
+    currency_code = requestOrderCreated['currency_code']
     paypal_api_url = f"{PAYPAL_API_URL}/v2/checkout/orders"
     headers = {
         'Content-Type': 'application/json',
@@ -92,8 +98,41 @@ async def create_order(response: Response ) -> dict:
             "method": data["links"][1]["method"],
             "amount": monto,
             "statusCode": response.status_code,
-            "currency_code": currency_code
+            "currency_code": currency_code,
+            "user": requestOrderCreated['user'],
+            "email": requestOrderCreated['email'],
+            "phone_number" : requestOrderCreated['phone_number'],
+            "description": requestOrderCreated['description']
         }
         order_created = orderCreatedModel(**rpta)
         orderCreatedService(db).create_order(order_created)
+        logger.info(f"End  of the Request create-order")
         return JSONResponse(status_code=201, content=rpta)
+    
+    
+@routerPayment.get('/capture-order' , tags=['Capture Order'], response_model=dict, status_code=201)
+async def capture_order(token: str) -> dict:
+    logger.info("Start Request capture-order")
+    request_id = str(uuid.uuid4())
+    access_token = await get_access_token()
+    headers = {
+        'PayPal-Request-Id': request_id,
+        'Authorization':  f'Bearer {access_token}',
+        }
+    paypalUrlCapture = str(PAYPAL_API_URL) + "/v2/checkout/orders/" + str(token) + "/capture"
+    
+
+    try:
+
+        response = requests.post(
+            paypalUrlCapture,
+            headers=headers
+        )
+        #response.raise_for_status()
+        data = response.json()
+        logger.info(response.status_code)
+        logger.info(f"Response of Capture Order -- {data}")
+        return  JSONResponse(status_code=201, content=data)
+    except requests.exceptions.RequestException as error:
+        print(error)
+        raise HTTPException(status_code=500, detail="Internal Server Error")

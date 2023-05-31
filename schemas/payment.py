@@ -11,6 +11,11 @@ class OrderCreated(BaseModel):
     amount: float = Field(ge=0, le=1200)
     currency_code: str = Field(max_length=10)
     creationDate: Optional[datetime]
+    user : str = Field(min_length=5 ,max_length=100)
+    email: str = Field(min_length=5, max_length=100)
+    phone_number: str = Field(min_length=10, max_length=20)
+    description : str = Field(min_length=5 , max_length=100) 
+
 
     class Config:
         schema_extra = {
@@ -22,6 +27,33 @@ class OrderCreated(BaseModel):
                 "amount": 100.0,
                 "statusCode": 200,
                 "currency_code": "USD",
-                "creationDate": "2023-05-30 06:42:15.491688"
+                "creationDate": "2023-05-30 06:42:15.491688",
+                "user": "Someone Unknown",
+                "email": "Unknown@gmail.com",
+                "phone_number" : "33333333333",
+                "description": "Business Bets"
+            }
+        }
+
+
+
+class RequestOrderCreated(BaseModel):
+    amount: float = Field(ge=0, le=1200)
+    currency_code: str = Field(max_length=10)
+    user : str = Field(min_length=5 ,max_length=100)
+    email: str = Field(min_length=5, max_length=100)
+    phone_number: str = Field(min_length=10, max_length=20)
+    description : str = Field(min_length=5 , max_length=100) 
+
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "amount": 100.0,
+                "currency_code": "USD",
+                "user": "Someone Unknown",
+                "email": "Unknown@gmail.com",
+                "phone_number" : "33333333333",
+                "description": "Business Bets"
             }
         }
