@@ -57,3 +57,43 @@ class RequestOrderCreated(BaseModel):
                 "description": "Business Bets"
             }
         }
+
+class OrderCapture(BaseModel):
+    id: str = Field(max_length=18)
+    status: str = Field(max_length=22)
+    creationDate: Optional[datetime]
+    email_address: str = Field(max_length=250)
+    account_id: str = Field(max_length=100)
+    given_name: str = Field(max_length=100)
+    surname: str = Field(max_length=100)
+    country_code: str = Field(max_length=10)
+    admin_area_1: str = Field(max_length=50)
+    postal_code: int
+    currency_code: str = Field(max_length=10)
+    value: float
+    commission: float
+    currency_code_commission: str = Field(max_length=10)
+    net_amount: float
+    net_currency_code_commission: str = Field(max_length=10)
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "id": "39U70013RT093303F",
+                "status": "COMPLETED",
+                "creationDate": "2023-05-31 12:34:56",
+                "email_address": "sb-mlyaw26105024@personal.example.com",
+                "account_id": "BZDWAA48R8P56",
+                "given_name": "John",
+                "surname": "Doe",
+                "country_code": "CO",
+                "admin_area_1": "Bogota",
+                "postal_code": 110111,
+                "currency_code": "USD",
+                "value": 100.0,
+                "commission": 5.74,
+                "currency_code_commission": "USD",
+                "net_amount": 1134.90,
+                "net_currency_code_commission": "USD"
+            }
+        }

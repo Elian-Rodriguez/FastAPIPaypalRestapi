@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Response
-from fastapi import HTTPException
+from fastapi import APIRouter, Response, HTTPException
 from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 import requests
 import base64
 import json
@@ -8,12 +8,14 @@ import uuid
 from config import appConfig, paypal_config, logger
 from database.database import Session
 from services.payment import OrderCreated as orderCreatedService
+from services.payment import OrderCapture as OrderCapturerService
 from models.payment import OrderCreated as orderCreatedModel
+from models.payment import OrderCapture as OrderCaptureModel
 from schemas.payment import OrderCreated as orderCreated
 from schemas.payment import RequestOrderCreated as RequestOrderCreated
+from schemas.payment import OrderCapture as schemasOrderCapture
 from datetime import datetime
-#from loguru import logger
-
+from typing import Dict, Any, Union
 
 HOST = str(appConfig['host'])
 logger.debug(HOST)
@@ -26,6 +28,7 @@ routerPayment = APIRouter()
 
 
 async def get_access_token():
+    logger.info("STARTING ACCESS TOKEN GENERATION")
     credentials = f"{PAYPAL_CLIENT_ID}:{PAYPAL_CLIENT_SECRET}"
     encoded_credentials = base64.b64encode(credentials.encode()).decode()
 
@@ -45,13 +48,12 @@ async def get_access_token():
         data = response.json()
         access_token = data.get('access_token')
         logger.warning("ACCESS TOKEN GENERATED")
+        logger.info("END ACCESS TOKEN GENERATION")
         return access_token
 
 
-
-
-@routerPayment.post("/create-order" , tags=['Create Order'], response_model=dict, status_code=201)
-async def create_order(requestOrderCreated: RequestOrderCreated ) -> dict:
+@routerPayment.post("/create-order", tags=['Create Order'], response_model=dict, status_code=201)
+async def create_order(requestOrderCreated: RequestOrderCreated) -> dict:
     logger.info(f"Start of the Request create-order")
     requestOrderCreated = requestOrderCreated.dict()
     logger.info(f"{requestOrderCreated}")
@@ -86,9 +88,9 @@ async def create_order(requestOrderCreated: RequestOrderCreated ) -> dict:
     }
 
     response = requests.post(paypal_api_url, headers=headers, json=data)
-    logger.info(response.status_code)
+    logger.info(f" RESPONSE CODE : {response.status_code}")
     data = response.json()
-    logger.debug(f"{data} - {type(data)}")
+    logger.info(f"RESPONSE BODY {data} - {type(data)}")
     if 200 <= response.status_code <= 299:
         db = Session()
         rpta = {
@@ -101,23 +103,23 @@ async def create_order(requestOrderCreated: RequestOrderCreated ) -> dict:
             "currency_code": currency_code,
             "user": requestOrderCreated['user'],
             "email": requestOrderCreated['email'],
-            "phone_number" : requestOrderCreated['phone_number'],
+            "phone_number": requestOrderCreated['phone_number'],
             "description": requestOrderCreated['description']
         }
         order_created = orderCreatedModel(**rpta)
-        orderCreatedService(db).create_order(order_created)
-        logger.info(f"End  of the Request create-order")
+        insert = orderCreatedService(db).create_order(order_created)
+        logger.info(f"End  of the Request create-order {insert} {type(insert)}")
         return JSONResponse(status_code=201, content=rpta)
-    
-    
-@routerPayment.get('/capture-order', tags=['Capture Order'], response_model=dict, status_code=201)
-async def capture_order(token: str, PayerID: str) -> dict:
+
+
+@routerPayment.get('/capture-order', tags=['Capture Order'], response_model=Union[schemasOrderCapture, Dict[str, Any]], status_code=201)
+async def capture_order(token: str, PayerID: str) -> Union[schemasOrderCapture, Dict[str, Any]]:
     logger.info("Start Request capture-order")
     request_id = str(uuid.uuid4())
     access_token = await get_access_token()
     headers = {
         'PayPal-Request-Id': request_id,
-        'Authorization':  f'Bearer {access_token}',
+        'Authorization': f'Bearer {access_token}',
         'Content-Type': 'application/json',
     }
 
@@ -126,12 +128,54 @@ async def capture_order(token: str, PayerID: str) -> dict:
     logger.info(f"URL : {paypalUrlCapture}")
 
     try:
-        response = requests.post(paypalUrlCapture,headers=headers)
+        response = requests.post(paypalUrlCapture, headers=headers)
         data = response.json()
-        logger.info(response.status_code)
+        logger.info(f"Response Code of Capture Order -- {response.status_code}")
         logger.info(f"Response of Capture Order -- {data}")
-        return JSONResponse(status_code=201, content=data)
-    
+        if 200 <= response.status_code <= 299:
+            db = Session()
+            rta = {
+                "id": data["id"],
+                "status": data["status"],
+                "email_address": data["payer"]["email_address"],
+                "account_id": data["payer"]["payer_id"],
+                "given_name": data["payer"]["name"]["given_name"],
+                "surname": data["payer"]["name"]["surname"],
+                "country_code": data["payer"]["address"]["country_code"],
+                "admin_area_1": data["purchase_units"][0]["shipping"]["address"]["admin_area_1"],
+                "postal_code": data["purchase_units"][0]["shipping"]["address"]["postal_code"],
+                "currency_code": data["purchase_units"][0]["payments"]["captures"][0]["amount"]["currency_code"],
+                "value": data["purchase_units"][0]["payments"]["captures"][0]["amount"]["value"],
+                "commission": data["purchase_units"][0]["payments"]["captures"][0]["seller_receivable_breakdown"]["paypal_fee"]["value"],
+                "currency_code_commission": data["purchase_units"][0]["payments"]["captures"][0]["seller_receivable_breakdown"]["paypal_fee"]["currency_code"],
+                "net_amount": data["purchase_units"][0]["payments"]["captures"][0]["seller_receivable_breakdown"]["net_amount"]["value"],
+                "net_currency_code_commission": data["purchase_units"][0]["payments"]["captures"][0]["seller_receivable_breakdown"]["net_amount"]["currency_code"]
+                }
+
+            ordercapturer = OrderCaptureModel(**rta)
+            logger.info("Generating Insert")
+            OrderCapturerService(db).create_order(ordercapturer)
+            logger.info("Validating Insert")
+            result = OrderCapturerService(db).get_order(data["id"])
+            logger.info(f"Response {result}")
+
+            logger.info(f"End Request capture-order")
+
+            return JSONResponse(status_code=201, content=jsonable_encoder(result))
+        
+        else:
+            logger.info(f"End Request capture-order")
+            return JSONResponse(status_code=response.status_code , content=data)
+
     except requests.exceptions.RequestException as error:
-        print(error)
+        logger.error(f" ERROR IN CAPTURE ORDER {error}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
+
+
+@routerPayment.get('/cancel-payment-order', tags=['Cancel Order'], response_model=dict, status_code=201)
+async def Cancel_order(token: str) -> dict:
+    logger.info(f"Start Request ancel-payment-order")
+    logger.info(f"Failed Transaction Customer Canceled Transaction Token : {token} ")
+    logger.info(f" RESPONSE IN CANCEL ORDER : message: Failed Transaction Customer Canceled Transaction")
+    logger.info(f"Start Request ancel-payment-order")
+    return JSONResponse(status_code=401, content={"message": "Failed Transaction Customer Canceled Transaction"})
