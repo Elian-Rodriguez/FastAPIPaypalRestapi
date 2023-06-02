@@ -1,0 +1,27 @@
+# Configuración de las bases de datos
+mysql:
+  host: localhost
+  port: 3306
+  database: corePay
+  username: root
+  password: pwd
+
+# Configuración de la API de PayPal
+paypal:
+  client_id: myClientIdPaypal
+  client_secret: mySecretKeyPaypal
+  paypal_api: https://api-m.sandbox.paypal.com
+  mode: sandbox
+
+# Configuración de la app
+app:
+  log_mode: DEBUG
+  rotation: "1 day"
+  verssion: 1.0
+  port: 4000
+  base_route: /api/v1
+  name: FastApiPaypal
+  #Host donde se expone el servicio
+  host: "http://127.0.0.1:8080"
+
+
