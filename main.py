@@ -3,7 +3,6 @@ from fastapi import Request
 #from loguru import logger
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
-from middlewares.error_handler import ErrorHandler
 import uvicorn
 from config import appConfig, baseRoute, logMode, rotation , logger
 from routers.payment import routerPayment
@@ -19,8 +18,7 @@ app.title = appConfig['name']
 app.version = appConfig['verssion']
 logger.info(f"{app.title} - {app.version}")
 
-# Agregar el middleware ErrorHandler
-#app.add_middleware(ErrorHandler)
+
 app.include_router(routerPayment)
 
 Base.metadata.create_all(bind=engine)

@@ -172,7 +172,7 @@ async def capture_order(token: str, PayerID: str) -> Union[schemasOrderCapture, 
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
-@routerPayment.get('/cancel-payment-order', tags=['Cancel Order'], response_model=dict, status_code=201)
+@routerPayment.get('/cancel-payment', tags=['Cancel Order'], response_model=dict, status_code=201)
 async def Cancel_order(token: str) -> dict:
     logger.info(f"Start Request ancel-payment-order")
     logger.info(f"Failed Transaction Customer Canceled Transaction Token : {token} ")

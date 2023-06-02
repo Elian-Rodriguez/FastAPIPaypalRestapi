@@ -9,7 +9,6 @@ def get_config():
 config = get_config()
 
 # Configuración de las bases de datos
-mongodb_config = config.get('mongodb', {})
 mysql_config = config.get('mysql', {})
 
 # Configuración de la API de PayPal
