@@ -7,6 +7,7 @@ import uvicorn
 from config import appConfig, baseRoute, logMode, rotation , logger
 from routers.payment import routerPayment
 from database.database import engine, Base
+import uuid
 
 BASE_ROUTE = appConfig['base_route']
 logger.info("STARTING SERVER OPERATION")
@@ -20,6 +21,13 @@ logger.info(f"{app.title} - {app.version}")
 
 
 app.include_router(routerPayment)
+@app.middleware("http")
+async def add_request_id(request, call_next):
+    # Genera un identificador único para cada solicitud
+    request.state.request_id = str(uuid.uuid4())
+    logger.info(f"START REQUEST {request.state.request_id}")
+    response = await call_next(request)
+    return response
 
 Base.metadata.create_all(bind=engine)
 logger.info("FINALIZED START")

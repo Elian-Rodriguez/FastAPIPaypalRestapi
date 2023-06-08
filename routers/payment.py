@@ -16,6 +16,7 @@ from schemas.payment import RequestOrderCreated as RequestOrderCreated
 from schemas.payment import OrderCapture as schemasOrderCapture
 from datetime import datetime
 from typing import Dict, Any, Union
+from fastapi import Request
 
 HOST = str(appConfig['host'])
 logger.debug(HOST)
@@ -27,8 +28,8 @@ PAYPAL_CLIENT_SECRET = paypal_config['client_secret']
 routerPayment = APIRouter()
 
 
-async def get_access_token():
-    logger.info("STARTING ACCESS TOKEN GENERATION")
+async def get_access_token(idRequest):
+    logger.info(f" [{idRequest}] STARTING ACCESS TOKEN GENERATION")
     credentials = f"{PAYPAL_CLIENT_ID}:{PAYPAL_CLIENT_SECRET}"
     encoded_credentials = base64.b64encode(credentials.encode()).decode()
 
@@ -43,21 +44,21 @@ async def get_access_token():
 
     response = requests.post(urlAccessToken, headers=headers, data=payload)
 
-    logger.warning(f"RESPONSE {response.status_code}")
+    logger.warning(f" [{idRequest}] RESPONSE {response.status_code}")
     if 200 <= response.status_code <= 299:
         data = response.json()
         access_token = data.get('access_token')
-        logger.warning("ACCESS TOKEN GENERATED")
-        logger.info("END ACCESS TOKEN GENERATION")
+        logger.warning(f" [{idRequest}] ACCESS TOKEN GENERATED")
+        logger.info(f" [{idRequest}]  END ACCESS TOKEN GENERATION")
         return access_token
 
 
 @routerPayment.post("/create-order", tags=['Create Order'], response_model=dict, status_code=201)
-async def create_order(requestOrderCreated: RequestOrderCreated) -> dict:
-    logger.info(f"Start of the Request create-order")
+async def create_order(requestOrderCreated: RequestOrderCreated, request: Request) -> dict:
+    logger.info(f" [{request.state.request_id}] Start of the Request create-order")
     requestOrderCreated = requestOrderCreated.dict()
     logger.info(f"{requestOrderCreated}")
-    access_token = await get_access_token()
+    access_token = await get_access_token(request.state.request_id)
     request_id = str(uuid.uuid4())
     monto = requestOrderCreated['amount']
     currency_code = requestOrderCreated['currency_code']
@@ -88,9 +89,9 @@ async def create_order(requestOrderCreated: RequestOrderCreated) -> dict:
     }
 
     response = requests.post(paypal_api_url, headers=headers, json=data)
-    logger.info(f" RESPONSE CODE : {response.status_code}")
+    logger.info(f" [{request.state.request_id}]  RESPONSE CODE : {response.status_code}")
     data = response.json()
-    logger.info(f"RESPONSE BODY {data} - {type(data)}")
+    logger.info(f" [{request.state.request_id}] RESPONSE BODY {data} - {type(data)}")
     if 200 <= response.status_code <= 299:
         db = Session()
         rpta = {
@@ -108,15 +109,15 @@ async def create_order(requestOrderCreated: RequestOrderCreated) -> dict:
         }
         order_created = orderCreatedModel(**rpta)
         insert = orderCreatedService(db).create_order(order_created)
-        logger.info(f"End  of the Request create-order {insert} {type(insert)}")
+        logger.info(f" [{request.state.request_id}]  End  of the Request create-order {insert} {type(insert)}")
         return JSONResponse(status_code=201, content=rpta)
 
 
 @routerPayment.get('/capture-order', tags=['Capture Order'], response_model=Union[schemasOrderCapture, Dict[str, Any]], status_code=201)
-async def capture_order(token: str, PayerID: str) -> Union[schemasOrderCapture, Dict[str, Any]]:
-    logger.info("Start Request capture-order")
+async def capture_order(token: str, PayerID: str, request: Request) -> Union[schemasOrderCapture, Dict[str, Any]]:
+    logger.info(" [{request.state.request_id}] Start Request capture-order")
     request_id = str(uuid.uuid4())
-    access_token = await get_access_token()
+    access_token = await get_access_token(request.state.request_id)
     headers = {
         'PayPal-Request-Id': request_id,
         'Authorization': f'Bearer {access_token}',
@@ -124,14 +125,14 @@ async def capture_order(token: str, PayerID: str) -> Union[schemasOrderCapture, 
     }
 
     paypalUrlCapture = str(PAYPAL_API_URL) + "/v2/checkout/orders/" + str(token) + "/capture"
-    logger.info(f"HEADERS - {headers} - {type(headers)}")
-    logger.info(f"URL : {paypalUrlCapture}")
+    logger.info(f" [{request.state.request_id}] HEADERS - {headers} - {type(headers)}")
+    logger.info(f" [{request.state.request_id}] URL : {paypalUrlCapture}")
 
     try:
         response = requests.post(paypalUrlCapture, headers=headers)
         data = response.json()
-        logger.info(f"Response Code of Capture Order -- {response.status_code}")
-        logger.info(f"Response of Capture Order -- {data}")
+        logger.info(f" [{request.state.request_id}] Response Code of Capture Order -- {response.status_code}")
+        logger.info(f" [{request.state.request_id}] Response of Capture Order -- {data}")
         if 200 <= response.status_code <= 299:
             db = Session()
             rta = {
@@ -153,29 +154,29 @@ async def capture_order(token: str, PayerID: str) -> Union[schemasOrderCapture, 
                 }
 
             ordercapturer = OrderCaptureModel(**rta)
-            logger.info("Generating Insert")
+            logger.info(f" [{request.state.request_id}] Generating Insert")
             OrderCapturerService(db).create_order(ordercapturer)
-            logger.info("Validating Insert")
+            logger.info(f" [{request.state.request_id}] Validating Insert")
             result = OrderCapturerService(db).get_order(data["id"])
-            logger.info(f"Response {result}")
+            logger.info(f" [{request.state.request_id}] Response {result}")
 
-            logger.info(f"End Request capture-order")
+            logger.info(f" [{request.state.request_id}] End Request capture-order")
 
             return JSONResponse(status_code=201, content=jsonable_encoder(result))
         
         else:
-            logger.info(f"End Request capture-order")
+            logger.info(f" [{request.state.request_id}] End Request capture-order")
             return JSONResponse(status_code=response.status_code , content=data)
 
     except requests.exceptions.RequestException as error:
-        logger.error(f" ERROR IN CAPTURE ORDER {error}")
+        logger.error(f" [{request.state.request_id}]  ERROR IN CAPTURE ORDER {error}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
 @routerPayment.get('/cancel-payment', tags=['Cancel Order'], response_model=dict, status_code=201)
-async def Cancel_order(token: str) -> dict:
-    logger.info(f"Start Request ancel-payment-order")
-    logger.info(f"Failed Transaction Customer Canceled Transaction Token : {token} ")
-    logger.info(f" RESPONSE IN CANCEL ORDER : message: Failed Transaction Customer Canceled Transaction")
-    logger.info(f"Start Request ancel-payment-order")
+async def Cancel_order(token: str, request: Request) -> dict:
+    logger.info(f" [{request.state.request_id}] Start Request ancel-payment-order")
+    logger.info(f" [{request.state.request_id}] Failed Transaction Customer Canceled Transaction Token : {token} ")
+    logger.info(f"  [{request.state.request_id}] RESPONSE IN CANCEL ORDER : message: Failed Transaction Customer Canceled Transaction")
+    logger.info(f" [{request.state.request_id}] Start Request ancel-payment-order")
     return JSONResponse(status_code=401, content={"message": "Failed Transaction Customer Canceled Transaction"})
