@@ -87,6 +87,8 @@ async def create_order(requestOrderCreated: RequestOrderCreated, request: Reques
             }
         }
     }
+    logger.info((f" [{request.state.request_id}] Start Request to PayPAL"))
+    logger.info(f" [{request.state.request_id}] Body {data}")
 
     response = requests.post(paypal_api_url, headers=headers, json=data)
     logger.info(f" [{request.state.request_id}]  RESPONSE CODE : {response.status_code}")
@@ -158,7 +160,7 @@ async def capture_order(token: str, PayerID: str, request: Request) -> Union[sch
             OrderCapturerService(db).create_order(ordercapturer)
             logger.info(f" [{request.state.request_id}] Validating Insert")
             result = OrderCapturerService(db).get_order(data["id"])
-            logger.info(f" [{request.state.request_id}] Response {result}")
+            logger.info(f" [{request.state.request_id}] Response {rta}")
 
             logger.info(f" [{request.state.request_id}] End Request capture-order")
 
